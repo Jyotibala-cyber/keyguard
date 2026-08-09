@@ -75,7 +75,7 @@ app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
 app.config["JSON_SORT_KEYS"] = False
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-# Enable Secure cookies when running behind HTTPS (Railway provides HTTPS by default)
+# Enable Secure cookies when running behind HTTPS (Render/Railway provide HTTPS by default)
 app.config["SESSION_COOKIE_SECURE"] = os.environ.get("KEYGUARD_COOKIE_SECURE", "").strip().lower() in ("1", "true", "yes", "on")
 
 
@@ -994,7 +994,7 @@ def server_error(_e):
 
 
 if __name__ == "__main__":
-    # Railway (and most PaaS) provide the port via the PORT environment variable.
+    # Render/Railway (and most PaaS) provide the port via the PORT env variable.
     # Bind 0.0.0.0 so the app is reachable outside the container.
     start_session_cleanup()
     port = int(os.environ.get("PORT", 5000))

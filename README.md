@@ -94,21 +94,37 @@ KEYGUARD_VOLATILE=1 python app.py   # volatile mode — zero data stored, wiped 
 | `KEYGUARD_MAX_UPLOAD_MB` | `16` | Hard cap on upload size enforced at the Flask level (prevents OOM / DoS via huge files). |
 | `KEYGUARD_SESSION_TTL_HOURS` | `24` | Stale per-session workspaces older than this are garbage-collected automatically. |
 | `KEYGUARD_CLEANUP_INTERVAL` | `3600` | Seconds between background session-cleanup sweeps. |
-| `PORT` | `5000` | Port the web server binds to (Railway sets this automatically). |
+| `PORT` | `5000` | Port the web server binds to (Render/Railway sets this automatically). |
 
-## Deploying to Railway
+## Deploying to Render
 
+Render supports a `render.yaml` **Blueprint** (included in this repo), so you can deploy
+the whole app with one click.
+
+**Option A — Blueprint (one-click):**
 1. **Push this repo to GitHub** — make sure `.secret_key`, `data/`, `keys/`, `uploads/`
    and `reports/` stay out of git (already handled by `.gitignore`).
-2. On **Railway** → **New Project** → **Deploy from GitHub repo** and select this repo.
-3. Railway auto-detects Python, installs `requirements.txt` and starts the app with the
-   provided `Procfile` (`gunicorn app:app`).
-4. In **Variables**, add:
+2. On [render.com](https://render.com) → **New** → **Blueprint** → connect the GitHub repo.
+3. Render reads `render.yaml`, builds the app, creates the env vars and deploys
+   automatically. It also provisions a `KEYGUARD_SECRET` automatically.
+
+**Option B — Manual Web Service:**
+1. **New** → **Web Service** → connect the GitHub repo.
+2. Runtime **Python 3**, Build Command:
+   ```
+   pip install -r requirements.txt
+   ```
+3. Start Command:
+   ```
+   gunicorn --workers=2 --threads=4 --timeout 120 --bind 0.0.0.0:$PORT app:app
+   ```
+4. Add the env vars (see table above). Recommended for Render:
    - `KEYGUARD_SECRET` → a long random string (e.g. `python -c "import secrets; print(secrets.token_hex(32))"`)
    - `KEYGUARD_COOKIE_SECURE` → `1`
-   - `KEYGUARD_VOLATILE` → `1` *(recommended: Railway storage is ephemeral — zero-storage
+   - `KEYGUARD_VOLATILE` → `1` *(recommended: Render's disk is ephemeral — zero-storage
      mode guarantees nothing sensitive persists and a redeploy starts clean)*
-5. Open the generated `*.up.railway.app` URL. Railway terminates TLS automatically.
+   - `KEYGUARD_MAX_UPLOAD_MB` → `16`
+5. Deploy and open the generated `*.onrender.com` URL. Render terminates TLS automatically.
 
 > No secrets are ever committed: the auto-generated `.secret_key` is git-ignored, and all
 > per-session keys/logs/uploads/reports live only under `data/<session_id>/` which is also

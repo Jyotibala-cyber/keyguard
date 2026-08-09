@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: keyguard
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --workers=2 --threads=4 --timeout 120 --bind 0.0.0.0:$PORT app:app
+    healthCheckPath: /
+    envVars:
+      - key: KEYGUARD_SECRET
+        generateValue: true
+      - key: KEYGUARD_COOKIE_SECURE
+        value: "1"
+      - key: KEYGUARD_VOLATILE
+        value: "1"
+      - key: KEYGUARD_MAX_UPLOAD_MB
+        value: "16"
