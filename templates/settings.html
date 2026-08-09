@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block page_subtitle %}Configure KeyGuard behaviour and manage security preferences{% endblock %}
+
+{% block content %}
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Preferences
+      </h2>
+      <span class="badge neutral">settings.json</span>
+    </div>
+
+    <div class="toggle-row">
+      <div><div class="t-label">Auto-save generated AES keys</div><div class="t-desc">Store AES keys in the vault when generated in the AES module.</div></div>
+      <label class="toggle"><input type="checkbox" id="autoSaveAes"><span class="track"></span><span class="thumb"></span></label>
+    </div>
+    <div class="toggle-row">
+      <div><div class="t-label">Delete source uploads after processing</div><div class="t-desc">Original uploaded files are wiped from disk immediately after they are processed — plaintext never lingers in <span class="mono">uploads/</span>.</div></div>
+      <label class="toggle"><input type="checkbox" id="autoDelUploads"><span class="track"></span><span class="thumb"></span></label>
+    </div>
+    <div class="toggle-row">
+      <div><div class="t-label">Include full activity log in reports</div><div class="t-desc">Embed every log entry when generating a security report.</div></div>
+      <label class="toggle"><input type="checkbox" id="includeLogs"><span class="track"></span><span class="thumb"></span></label>
+    </div>
+
+    <div class="form-row" style="margin-top:16px;">
+      <div class="field">
+        <label>Max upload size (MB)</label>
+        <input class="input mono" id="maxFileMb" type="number" min="1" max="500">
+      </div>
+      <div class="field">
+        <label>Security level</label>
+        <select class="select" id="secLevel">
+          <option value="High">High</option>
+          <option value="Medium">Medium</option>
+          <option value="Low">Low</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="saveSettingsBtn" type="button">Save Settings</button>
+    <div class="result-panel" id="settingsResult"></div>
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <div class="card-header">
+        <h2>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+          Maintenance
+        </h2>
+      </div>
+      <p class="muted" style="font-size:.84rem;margin-bottom:14px;">
+        The activity log tracks every operation performed in KeyGuard. Clearing it resets
+        all counters on the dashboard and removes history from future reports.
+      </p>
+      <button class="btn btn-danger" id="clearLogBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+        Clear Activity Log
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+          Privacy & Session
+        </h2>
+        <span class="badge neutral">isolated</span>
+      </div>
+      <p class="muted" style="font-size:.84rem;margin-bottom:12px;">
+        KeyGuard keeps every browser session private with a signed session token.
+        Keys, activity logs, uploads and reports are stored in a workspace that only
+        your session can see — other users never see your data.
+        {% if volatile %}<br><strong class="badge success" style="margin-top:6px;">Volatile mode — nothing is written to disk; all data is wiped on restart.</strong>
+        {% endif %}
+      </p>
+      <div class="kv">
+        <span class="k">Session token</span><span class="v mono">{{ session_token }}</span>
+        <span class="k">Full ID</span><span class="v mono small">{{ session_id }}</span>
+      </div>
+      <button class="btn btn-danger" id="resetSessionBtn" type="button" style="margin-top:14px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+        Start New Session (Wipe My Data)
+      </button>
+      <div class="result-panel" id="sessionResult"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          About KeyGuard
+        </h2>
+      </div>
+      <div class="kv">
+        <span class="k">Version</span><span class="v">1.0.0</span>
+        <span class="k">Framework</span><span class="v">Flask + PyCryptodome</span>
+        <span class="k">Symmetric</span><span class="v">AES-256-GCM (authenticated)</span>
+        <span class="k">Asymmetric</span><span class="v">RSA-OAEP / SHA-256</span>
+        <span class="k">Hashing</span><span class="v">SHA-256 · SHA-512 · SHA-1 · MD5</span>
+        <span class="k">KDF</span><span class="v">PBKDF2-HMAC-SHA256 (150k iter)</span>
+        <span class="k">Status</span><span class="v"><span class="badge success">All systems operational</span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  api('/api/settings').then((d) => {
+    if (!d.success) return;
+    const s = d.settings;
+    $('#autoSaveAes').checked = !!s.auto_save_aes_keys;
+    $('#autoDelUploads').checked = !!s.auto_delete_uploads;
+    $('#includeLogs').checked = !!s.report_include_logs;
+    $('#maxFileMb').value = s.max_file_size_mb;
+    $('#secLevel').value = s.security_level;
+  });
+
+  $('#saveSettingsBtn').addEventListener('click', () => {
+    postJSON('/api/settings', {
+      auto_save_aes_keys: $('#autoSaveAes').checked,
+      auto_delete_uploads: $('#autoDelUploads').checked,
+      report_include_logs: $('#includeLogs').checked,
+      max_file_size_mb: parseInt($('#maxFileMb').value, 10) || 50,
+      security_level: $('#secLevel').value,
+    }, $('#saveSettingsBtn')).then((d) => {
+      if (!d.success) return toast(d.error, 'error');
+      const box = $('#settingsResult');
+      box.classList.add('show');
+      box.innerHTML = `<div class="result-banner success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg><div><strong>Settings saved</strong><br>Preferences persisted to <span class="mono">settings.json</span>.</div></div>`;
+      toast('Settings saved', 'success');
+    });
+  });
+
+  $('#clearLogBtn').addEventListener('click', () => {
+    if (!confirm('Clear the entire activity log? This resets all dashboard counters.')) return;
+    postJSON('/api/settings/clear-log', {}, $('#clearLogBtn')).then((d) => {
+      if (d.success) { toast('Activity log cleared', 'success'); }
+      else toast(d.error, 'error');
+    });
+  });
+
+  $('#resetSessionBtn').addEventListener('click', () => {
+    if (!confirm('Start a new private session? All keys, logs, uploads and reports in THIS session will be permanently wiped.')) return;
+    postJSON('/api/session/reset', {}, $('#resetSessionBtn')).then((d) => {
+      if (!d.success) return toast(d.error, 'error');
+      const box = $('#sessionResult');
+      box.classList.add('show');
+      box.innerHTML = `<div class="result-banner success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg><div><strong>New session started</strong><br>Your old workspace was wiped. Session <span class="mono">${d.session_id.slice(0, 8)}...</span> is now active.</div></div>`;
+      toast('New session started', 'success');
+    });
+  });
+})();
+</script>
+{% endblock %}

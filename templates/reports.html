@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% block title %}Reports{% endblock %}
+{% block page_title %}Security Reports{% endblock %}
+{% block page_subtitle %}Generate, export and audit your encryption activity{% endblock %}
+
+{% block content %}
+
+<section class="stats-grid cols-6">
+  <div class="card stat-card cyan"><div class="stat-icon cyan">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="8" rx="1"/><rect x="12" y="6" width="3" height="12" rx="1"/><rect x="17" y="13" width="3" height="5" rx="1"/></svg></div>
+    <div class="stat-meta"><span class="stat-label">Operations</span><span class="stat-value">{{ stats.total_operations }}</span><span class="stat-sub">all time</span></div></div>
+  <div class="card stat-card green"><div class="stat-icon green">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg></div>
+    <div class="stat-meta"><span class="stat-label">Success</span><span class="stat-value">{{ stats.success }}</span><span class="stat-sub">operations</span></div></div>
+  <div class="card stat-card red"><div class="stat-icon red">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg></div>
+    <div class="stat-meta"><span class="stat-label">Failed</span><span class="stat-value">{{ stats.failed }}</span><span class="stat-sub">operations</span></div></div>
+  <div class="card stat-card amber"><div class="stat-icon amber">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6h14M5 12h14M5 18h14"/><path d="M9 3v18M15 3v18"/></svg></div>
+    <div class="stat-meta"><span class="stat-label">Hashes</span><span class="stat-value">{{ stats.hash_operations }}</span><span class="stat-sub">computed</span></div></div>
+  <div class="card stat-card blue"><div class="stat-icon blue">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.6 7.6a5.5 5.5 0 1 1-7.8 7.8 5.5 5.5 0 0 1 7.8-7.8zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></div>
+    <div class="stat-meta"><span class="stat-label">RSA Ops</span><span class="stat-value">{{ stats.rsa_operations }}</span><span class="stat-sub">encrypt/decrypt</span></div></div>
+  <div class="card stat-card violet"><div class="stat-icon violet">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+    <div class="stat-meta"><span class="stat-label">Password</span><span class="stat-value">{{ stats.password_operations }}</span><span class="stat-sub">operations</span></div></div>
+</section>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+        Generate Security Report
+      </h2>
+    </div>
+    <p class="muted" style="font-size:.84rem;margin-bottom:14px;">
+      Produces an auditable summary of every operation: totals, success/failure rates,
+      breakdown by category and day, managed keys and the full activity log.
+      Exports as both <strong>JSON</strong> and readable <strong>Markdown</strong>.
+    </p>
+    <div class="form-row">
+      <button class="btn btn-primary" id="genReportBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
+        Generate Report Now
+      </button>
+      <button class="btn btn-secondary" id="refreshReports" type="button">Refresh List</button>
+    </div>
+    <div class="result-panel" id="reportResult"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        Exported Reports
+      </h2>
+      <span class="badge neutral" id="reportCount">0 files</span>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>File</th><th>Size</th><th>Generated</th><th style="text-align:right;">Download</th></tr></thead>
+        <tbody id="reportFilesBody">
+          <tr><td colspan="4" class="muted">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<section class="card" style="margin-top:20px;">
+  <div class="card-header">
+    <h2>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      Operation Log
+    </h2>
+    <div class="form-row" style="gap:8px;">
+      <select class="select" id="logFilter" style="width:auto;padding:6px 30px 6px 12px;font-size:.78rem;">
+        <option value="">All categories</option>
+        <option value="AES">AES</option>
+        <option value="RSA">RSA</option>
+        <option value="Hashing">Hashing</option>
+        <option value="Key Management">Key Management</option>
+        <option value="Password">Password</option>
+        <option value="Reports">Reports</option>
+      </select>
+      <button class="btn btn-sm btn-ghost" id="logReload" type="button">Refresh</button>
+    </div>
+  </div>
+  <div class="table-wrap" style="max-height:420px;overflow-y:auto;">
+    <table class="table">
+      <thead><tr><th>Time</th><th>Category</th><th>Action</th><th>Status</th><th>Detail</th></tr></thead>
+      <tbody id="logBody">
+        <tr><td colspan="5" class="muted">Loading logs…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  function loadLogs(filter) {
+    api('/api/reports/logs').then((d) => {
+      if (!d.success) return;
+      const rows = filter ? d.logs.filter((l) => l.category === filter) : d.logs;
+      const tb = $('#logBody');
+      tb.innerHTML = rows.length ? rows.slice().reverse().map((l) => `
+        <tr>
+          <td class="mono muted">${esc(l.timestamp)}</td>
+          <td>${esc(l.category)}</td>
+          <td>${esc(l.action)}</td>
+          <td><span class="badge ${l.status === 'success' ? 'success' : 'error'}">${l.status}</span></td>
+          <td class="truncate muted">${esc(l.detail || '—')}</td>
+        </tr>`).join('') : '<tr><td colspan="5" class="muted">No log entries.</td></tr>';
+    });
+  }
+
+  $('#logReload').addEventListener('click', () => loadLogs($('#logFilter').value));
+  $('#logFilter').addEventListener('change', () => loadLogs($('#logFilter').value));
+
+  function loadReports() {
+    api('/api/reports/list').then((d) => {
+      if (!d.success) return;
+      $('#reportCount').textContent = d.files.length + ' files';
+      const tb = $('#reportFilesBody');
+      tb.innerHTML = d.files.length ? d.files.map((f) => `
+        <tr>
+          <td class="mono">${esc(f.name)}</td>
+          <td>${formatBytes(f.size)}</td>
+          <td class="muted">${esc(f.modified)}</td>
+          <td style="text-align:right;"><a class="btn btn-sm btn-secondary" href="/reports/download/${encodeURIComponent(f.name)}">Download</a></td>
+        </tr>`).join('') : '<tr><td colspan="4" class="muted">No reports exported yet.</td></tr>';
+    });
+  }
+
+  $('#genReportBtn').addEventListener('click', () => {
+    postJSON('/api/reports/generate', {}, $('#genReportBtn')).then((d) => {
+      if (!d.success) return toast(d.error, 'error');
+      const box = $('#reportResult');
+      box.classList.add('show');
+      box.innerHTML = `
+        <div class="result-banner success">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+          <div><strong>Report generated successfully</strong><br>JSON: <span class="mono">${esc(d.json_file)}</span> · MD: <span class="mono">${esc(d.md_file)}</span></div>
+        </div>
+        <div class="form-row">
+          <a class="btn btn-sm btn-success" href="${d.json_url}">Download JSON</a>
+          <a class="btn btn-sm btn-success" href="${d.md_url}">Download Markdown</a>
+        </div>`;
+      toast('Report generated', 'success');
+      loadReports();
+    });
+  });
+
+  $('#refreshReports').addEventListener('click', loadReports);
+  loadReports();
+  loadLogs('');
+})();
+</script>
+{% endblock %}

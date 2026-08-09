@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+{% block title %}RSA Encryption{% endblock %}
+{% block page_title %}RSA Encryption Module{% endblock %}
+{% block page_subtitle %}Asymmetric key pairs with RSA-OAEP (SHA-256) for secure data exchange{% endblock %}
+
+{% block content %}
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.6 7.6a5.5 5.5 0 1 1-7.8 7.8 5.5 5.5 0 0 1 7.8-7.8zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+        Generate Key Pair
+      </h2>
+      <span class="badge info">RSA-OAEP</span>
+    </div>
+    <div class="field">
+      <label>Key Size</label>
+      <div class="pill-group" id="rsaSizePills">
+        <div class="pill" data-size="1024">1024-bit</div>
+        <div class="pill active" data-size="2048">2048-bit</div>
+        <div class="pill" data-size="4096">4096-bit</div>
+      </div>
+      <div class="hint">2048-bit is the current minimum recommendation; 4096-bit for higher assurance.</div>
+    </div>
+    <button class="btn btn-primary btn-block" id="rsaGenBtn" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      Generate RSA Key Pair
+    </button>
+    <div class="result-panel" id="rsaGenResult"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Encrypt / Decrypt
+      </h2>
+      <span class="badge neutral">Max {{ '190' }} bytes plaintext (2048-bit)</span>
+    </div>
+    <div class="field">
+      <label>Public Key (PEM) <span class="req">*</span></label>
+      <textarea class="textarea" id="rsaPub" rows="5" placeholder="-----BEGIN PUBLIC KEY-----&#10;…"></textarea>
+    </div>
+    <div class="field">
+      <label>Private Key (PEM) <span class="req">*</span></label>
+      <textarea class="textarea" id="rsaPriv" rows="5" placeholder="-----BEGIN PRIVATE KEY-----&#10;…"></textarea>
+    </div>
+    <div class="field">
+      <label>Input Text</label>
+      <textarea class="textarea" id="rsaInput" rows="4" placeholder="Plaintext to encrypt, or base64 ciphertext to decrypt…"></textarea>
+    </div>
+    <div class="form-row">
+      <button class="btn btn-primary" id="rsaEncBtn" type="button">Encrypt with Public Key</button>
+      <button class="btn btn-secondary" id="rsaDecBtn" type="button">Decrypt with Private Key</button>
+    </div>
+    <div class="field" style="margin-top:14px;">
+      <label>Output</label>
+      <textarea class="textarea" id="rsaOutput" rows="4" readonly placeholder="Result appears here…"></textarea>
+    </div>
+    <div class="result-panel" id="rsaOpResult"></div>
+  </div>
+</div>
+
+<section class="card" style="margin-top:20px;">
+  <div class="card-header">
+    <h2>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+      Stored RSA Key Pairs
+    </h2>
+    <span class="badge info">Secure key vault</span>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr><th>Key ID</th><th>Algorithm</th><th>Size</th><th>Created</th><th>Strength</th><th style="text-align:right;">Actions</th></tr>
+      </thead>
+      <tbody id="rsaKeysBody">
+        <tr><td colspan="6" class="muted">Loading key vault…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  let rsaSize = 2048;
+  let pubPem = '';
+  let privPem = '';
+
+  $$('#rsaSizePills .pill').forEach((p) => p.addEventListener('click', () => {
+    $$('#rsaSizePills .pill').forEach((x) => x.classList.remove('active'));
+    p.classList.add('active');
+    rsaSize = parseInt(p.dataset.size, 10);
+  }));
+
+  $('#rsaGenBtn').addEventListener('click', () => {
+    postJSON('/api/rsa/generate', { bits: rsaSize }, $('#rsaGenBtn')).then((d) => {
+      if (!d.success) { showRes('#rsaGenResult', false, d.error); return; }
+      pubPem = d.public_pem;
+      privPem = d.private_pem;
+      $('#rsaPub').value = pubPem;
+      $('#rsaPriv').value = privPem;
+      $('#rsaGenResult').classList.add('show');
+      $('#rsaGenResult').innerHTML = `
+        <div class="result-banner success">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+          <div><strong>Key pair generated and stored securely</strong><br>Key ID: <span class="mono">${esc(d.key_id)}</span> · ${rsaSize}-bit</div>
+        </div>
+        <div class="form-row">
+          <button class="btn btn-sm btn-secondary" id="copyPub">Copy Public Key</button>
+          <button class="btn btn-sm btn-secondary" id="copyPriv">Copy Private Key</button>
+        </div>`;
+      $('#copyPub').addEventListener('click', () => copyText(pubPem, $('#copyPub')));
+      $('#copyPriv').addEventListener('click', () => copyText(privPem, $('#copyPriv')));
+      toast('RSA key pair generated', 'success');
+      loadRsaKeys();
+    });
+  });
+
+  function showRes(sel, ok, msg) {
+    $(sel).classList.add('show');
+    $(sel).innerHTML = `<div class="result-banner ${ok ? 'success' : 'error'}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ok ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/>' : '<circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/>'}</svg>
+      <div>${esc(msg)}</div></div>`;
+  }
+
+  $('#rsaEncBtn').addEventListener('click', () => {
+    const pub = $('#rsaPub').value.trim();
+    const text = $('#rsaInput').value;
+    if (!pub) return toast('Public key required', 'error');
+    if (!text) return toast('Enter text to encrypt', 'error');
+    postJSON('/api/rsa/encrypt', { public_key: pub, text }, $('#rsaEncBtn')).then((d) => {
+      if (d.success) { $('#rsaOutput').value = d.result; showRes('#rsaOpResult', true, 'Encrypted with public key'); }
+      else showRes('#rsaOpResult', false, d.error);
+    });
+  });
+
+  $('#rsaDecBtn').addEventListener('click', () => {
+    const priv = $('#rsaPriv').value.trim();
+    const text = $('#rsaInput').value;
+    if (!priv) return toast('Private key required', 'error');
+    if (!text) return toast('Enter ciphertext to decrypt', 'error');
+    postJSON('/api/rsa/decrypt', { private_key: priv, text }, $('#rsaDecBtn')).then((d) => {
+      if (d.success) { $('#rsaOutput').value = d.result; showRes('#rsaOpResult', true, 'Decrypted with private key'); }
+      else showRes('#rsaOpResult', false, d.error);
+    });
+  });
+
+  function loadRsaKeys() {
+    api('/api/rsa/keys').then((d) => {
+      if (!d.success) return;
+      const tb = $('#rsaKeysBody');
+      tb.innerHTML = d.keys.length ? d.keys.map((k) => `
+        <tr>
+          <td class="mono">${esc(k.id)}</td>
+          <td>${esc(k.algorithm)}</td>
+          <td class="mono">${esc(k.key_size)}</td>
+          <td class="muted">${esc(k.created)}</td>
+          <td><span class="badge ${k.key_size >= 2048 ? 'success' : 'warning'}">${esc(k.strength)}</span></td>
+          <td style="text-align:right;">
+            <button class="btn btn-sm btn-ghost" data-use="${esc(k.id)}">Use Keys</button>
+            <button class="btn btn-sm btn-danger" data-del="${esc(k.id)}">Delete</button>
+          </td>
+        </tr>`).join('') : '<tr><td colspan="6" class="muted">No RSA key pairs stored yet.</td></tr>';
+
+      $$('#rsaKeysBody [data-use]').forEach((b) => b.addEventListener('click', () => {
+        const id = b.dataset.use;
+        api('/api/rsa/keys/' + id).then((r) => {
+          if (r.success) {
+            $('#rsaPub').value = r.public_pem;
+            toast(`Public key loaded from vault (${id})`, 'success');
+          } else toast(r.error, 'error');
+        });
+      }));
+      $$('#rsaKeysBody [data-del]').forEach((b) => b.addEventListener('click', () => {
+        const id = b.dataset.del;
+        if (!confirm('Delete RSA key pair ' + id + '?\nAny data encrypted with it will be lost.')) return;
+        api('/api/rsa/keys/' + id, { method: 'DELETE' }).then((r) => {
+          if (r.success) { toast('Key pair deleted', 'success'); loadRsaKeys(); }
+          else toast(r.error, 'error');
+        });
+      }));
+    });
+  }
+  loadRsaKeys();
+})();
+</script>
+{% endblock %}

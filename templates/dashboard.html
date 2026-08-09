@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Security Dashboard{% endblock %}
+{% block page_subtitle %}Real-time overview of your cryptographic operations{% endblock %}
+
+{% block content %}
+
+<section class="stats-grid">
+  <div class="card stat-card cyan">
+    <div class="stat-icon cyan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    </div>
+    <div class="stat-meta">
+      <span class="stat-label">Encrypted Files</span>
+      <span class="stat-value" id="statEncrypted">{{ stats.encrypted_files }}</span>
+      <span class="stat-sub">AES file operations</span>
+    </div>
+  </div>
+
+  <div class="card stat-card green">
+    <div class="stat-icon green">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.6 7.6a5.5 5.5 0 1 1-7.8 7.8 5.5 5.5 0 0 1 7.8-7.8zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+    </div>
+    <div class="stat-meta">
+      <span class="stat-label">Keys Generated</span>
+      <span class="stat-value" id="statKeys">{{ stats.keys_generated }}</span>
+      <span class="stat-sub">{{ stats.total_keys }} managed in vault</span>
+    </div>
+  </div>
+
+  <div class="card stat-card amber">
+    <div class="stat-icon amber">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6h14M5 12h14M5 18h14"/><path d="M9 3v18M15 3v18"/></svg>
+    </div>
+    <div class="stat-meta">
+      <span class="stat-label">Hash Operations</span>
+      <span class="stat-value" id="statHashes">{{ stats.hash_operations }}</span>
+      <span class="stat-sub">SHA-256 · SHA-512 · MD5</span>
+    </div>
+  </div>
+
+  <div class="card stat-card violet">
+    <div class="stat-icon violet">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+    </div>
+    <div class="stat-meta">
+      <span class="stat-label">Security Score</span>
+      <span class="stat-value" id="statScore">{{ stats.security_score }}/100</span>
+      <span class="stat-sub" id="statScoreLabel">Healthy</span>
+    </div>
+  </div>
+</section>
+
+<section class="grid-2-1">
+  <div class="card">
+    <div class="card-header">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Security Status Overview
+      </h2>
+      <span class="badge info" id="statusPulse"><span class="status-dot cyan"></span> Live</span>
+    </div>
+    <div class="status-list" id="statusList">
+      <div class="status-row">
+        <div class="status-name"><span class="status-dot green"></span> AES Encryption Engine</div>
+        <span class="badge success">AES-256-GCM Active</span>
+      </div>
+      <div class="status-row">
+        <div class="status-name"><span class="status-dot green"></span> RSA Asymmetric Engine</div>
+        <span class="badge success">RSA-2048+ Active</span>
+      </div>
+      <div class="status-row">
+        <div class="status-name"><span class="status-dot green"></span> Hash &amp; Integrity Checks</div>
+        <span class="badge success">SHA-2 Family</span>
+      </div>
+      <div class="status-row">
+        <div class="status-name"><span class="status-dot green"></span> Key Vault</div>
+        <span class="badge neutral" id="vaultBadge">{{ stats.total_keys }} keys stored</span>
+      </div>
+      <div class="status-row">
+        <div class="status-name"><span class="status-dot green"></span> Password Hashing (PBKDF2)</div>
+        <span class="badge success">150k iterations</span>
+      </div>
+      <div class="status-row">
+        <div class="status-name" id="opStatusName"><span class="status-dot cyan" id="opStatusDot"></span> Operation Success Rate</div>
+        <span class="badge info" id="opRate">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Activity Mix
+      </h2>
+    </div>
+    <div class="mix" id="mixPanel">
+      <div class="mix-row"><span class="mix-label">AES Operations</span><div class="progress-track"><div class="progress-fill cy" style="width:0%"></div></div><span class="mix-count">0</span></div>
+      <div class="mix-row"><span class="mix-label">RSA Operations</span><div class="progress-track"><div class="progress-fill mid" style="width:0%"></div></div><span class="mix-count">0</span></div>
+      <div class="mix-row"><span class="mix-label">Hashing</span><div class="progress-track"><div class="progress-fill high" style="width:0%"></div></div><span class="mix-count">0</span></div>
+      <div class="mix-row"><span class="mix-label">Password Ops</span><div class="progress-track"><div class="progress-fill low" style="width:0%"></div></div><span class="mix-count">0</span></div>
+    </div>
+    <div class="divider"></div>
+    <div class="kv">
+      <span class="k">Total operations</span><span class="v" id="statTotal">{{ stats.total_operations }}</span>
+      <span class="k">Successful</span><span class="v" id="statOk">{{ stats.success }}</span>
+      <span class="k">Failed / Rejected</span><span class="v" id="statBad">{{ stats.failed }}</span>
+      <span class="k">AES keys in vault</span><span class="v">{{ stats.aes_keys }}</span>
+      <span class="k">RSA keys in vault</span><span class="v">{{ stats.rsa_keys }}</span>
+    </div>
+  </div>
+</section>
+
+<section class="card" style="margin-top:20px;">
+  <div class="card-header">
+    <h2>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      Recent Activity
+    </h2>
+    <a href="{{ url_for('reports_page') }}" class="btn btn-ghost btn-sm">View all logs</a>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr><th>Time</th><th>Category</th><th>Action</th><th>Status</th><th>Detail</th></tr>
+      </thead>
+      <tbody id="activityBody">
+        <tr><td colspan="5" class="muted">Loading activity…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const STATUS_LABEL = { 'Encrypt file': 'Encrypt', 'Decrypt file': 'Decrypt', 'Encrypt text': 'Encrypt', 'Decrypt text': 'Decrypt' };
+  function render() {
+    api('/api/stats').then((d) => {
+      if (!d.success) return;
+      const s = d.stats;
+      $('#statEncrypted').textContent = s.encrypted_files;
+      $('#statKeys').textContent = s.keys_generated;
+      $('#statHashes').textContent = s.hash_operations;
+      $('#statScore').textContent = s.security_score + '/100';
+      $('#statScoreLabel').textContent = s.security_score >= 80 ? 'Healthy' : (s.security_score >= 50 ? 'Monitor' : 'At risk');
+      $('#statScore').closest('.stat-card').className = 'card stat-card ' + (s.security_score >= 70 ? 'violet' : 'red');
+      $('#statTotal').textContent = s.total_operations;
+      $('#statOk').textContent = s.success;
+      $('#statBad').textContent = s.failed;
+      $('#vaultBadge').textContent = s.total_keys + ' keys stored';
+
+      const rate = s.total_operations ? Math.round((s.success / s.total_operations) * 100) : 100;
+      $('#opRate').textContent = rate + '%';
+      $('#opStatusDot').className = 'status-dot ' + (rate >= 90 ? 'green' : rate >= 70 ? 'amber' : 'red');
+
+      const cats = [['AES Operations', s.encrypted_files + s.decrypted_files + s.text_operations], ['RSA Operations', s.rsa_operations], ['Hashing', s.hash_operations], ['Password Ops', s.password_operations]];
+      const max = Math.max(1, ...cats.map((c) => c[1]));
+      $$('#mixPanel .mix-row').forEach((row, i) => {
+        row.querySelector('.progress-fill').style.width = (cats[i][1] / max) * 100 + '%';
+        row.querySelector('.mix-count').textContent = cats[i][1];
+      });
+
+      const tbody = $('#activityBody');
+      tbody.innerHTML = d.recent.length ? d.recent.map((l) => `
+        <tr>
+          <td class="mono muted">${esc(l.timestamp)}</td>
+          <td>${esc(l.category)}</td>
+          <td>${esc(l.action)}</td>
+          <td><span class="badge ${l.status === 'success' ? 'success' : 'error'}">${l.status}</span></td>
+          <td class="truncate muted">${esc(l.detail || '—')}</td>
+        </tr>`).join('') : '<tr><td colspan="5" class="muted">No activity recorded yet.</td></tr>';
+    });
+  }
+  render();
+  setInterval(render, 10000);
+})();
+</script>
+{% endblock %}

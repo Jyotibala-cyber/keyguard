@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+env/
+
+# KeyGuard runtime data (NEVER commit key material)
+data/
+keys/
+uploads/
+reports/
+activity.log
+key_store.json
+settings.json
+*.pem
+
+# Secrets (NEVER commit)
+.secret_key
+
+# Build / misc
+.dist/
+*.log
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% block title %}Hash Analyzer{% endblock %}
+{% block page_title %}Hash Generator & Integrity Checker{% endblock %}
+{% block page_subtitle %}Fingerprint data and verify file integrity with SHA-256, SHA-512, SHA-1 and MD5{% endblock %}
+
+{% block content %}
+
+<div class="card" data-tab-group="hash">
+  <div class="tabs">
+    <button class="tab active" data-tab="htext">Hash Text</button>
+    <button class="tab" data-tab="hfile">Hash File</button>
+    <button class="tab" data-tab="check">Integrity Check</button>
+  </div>
+
+  <div class="tab-panel active" data-panel="htext">
+    <div class="grid-2-1">
+      <div class="field">
+        <label>Input Text <span class="req">*</span></label>
+        <textarea class="textarea" id="hashInput" placeholder="Type the data you want to fingerprint…"></textarea>
+      </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <button class="btn btn-primary btn-block" id="hashTextBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6h14M5 12h14M5 18h14"/><path d="M9 3v18M15 3v18"/></svg>
+          Generate Hashes
+        </button>
+        <div class="hint">All supported algorithms are computed in a single request.</div>
+      </div>
+    </div>
+    <div class="hash-list" id="hashTextResults"></div>
+  </div>
+
+  <div class="tab-panel" data-panel="hfile">
+    <div class="grid-2">
+      <div class="field">
+        <label>Select File <span class="req">*</span></label>
+        <div class="dropzone" id="hashDz">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
+          <p>Drop a file here or click to browse</p>
+          <span>Hashes are computed over the exact file bytes</span>
+          <div class="file-meta"></div>
+        </div>
+        <input type="file" id="hashFile" hidden>
+      </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <button class="btn btn-primary btn-block" id="hashFileBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6h14M5 12h14M5 18h14"/><path d="M9 3v18M15 3v18"/></svg>
+          Calculate File Hashes
+        </button>
+        <div class="hint">Files are read in 1 MB chunks, so even large files are handled with constant memory.</div>
+      </div>
+    </div>
+    <div class="hash-list" id="hashFileResults" style="margin-top:14px;"></div>
+  </div>
+
+  <div class="tab-panel" data-panel="check">
+    <div class="card-header">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12c4-6 8-6 12 0s8 6 12 0"/><path d="M3 7c4-6 8-6 12 0"/></svg>
+        Hash Comparison
+      </h2>
+      <span class="badge neutral">Detect file modification</span>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label>Hash A (expected) <span class="req">*</span></label>
+        <input class="input mono" id="hashA" placeholder="Paste reference hash (e.g. from a trusted source)">
+      </div>
+      <div class="field">
+        <label>Hash B (computed) <span class="req">*</span></label>
+        <input class="input mono" id="hashB" placeholder="Paste the computed hash of the file you received">
+      </div>
+    </div>
+    <button class="btn btn-primary" id="hashCompareBtn" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+      Verify Integrity
+    </button>
+    <div class="result-panel" id="hashCompareResult"></div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  function renderHashes(target, hashes) {
+    const box = $(target);
+    box.innerHTML = Object.entries(hashes).map(([algo, value]) => `
+      <div class="hash-item">
+        <div class="h-name">${esc(algo.toUpperCase())}</div>
+        <div class="h-value">${esc(value)}</div>
+        <div style="margin-top:8px;"><button class="btn btn-sm btn-ghost copy-btn" data-copy="${esc(value)}">Copy</button></div>
+      </div>`).join('');
+    $$(`${target} [data-copy]`).forEach((b) => b.addEventListener('click', () => copyText(b.dataset.copy, b)));
+  }
+
+  $('#hashTextBtn').addEventListener('click', () => {
+    const text = $('#hashInput').value;
+    if (!text) return toast('Enter some text first', 'error');
+    postJSON('/api/hash/text', { text }, $('#hashTextBtn')).then((d) => {
+      if (d.success) renderHashes('#hashTextResults', d.hashes);
+      else toast(d.error, 'error');
+    });
+  });
+
+  bindDropzone($('#hashDz'), $('#hashFile'));
+  $('#hashFileBtn').addEventListener('click', () => {
+    const file = $('#hashFile').files[0];
+    if (!file) return toast('Select a file first', 'error');
+    const fd = new FormData();
+    fd.append('file', file);
+    postJSON('/api/hash/file', fd, $('#hashFileBtn')).then((d) => {
+      if (d.success) renderHashes('#hashFileResults', d.hashes);
+      else toast(d.error, 'error');
+    });
+  });
+
+  $('#hashCompareBtn').addEventListener('click', () => {
+    const a = $('#hashA').value.trim();
+    const b = $('#hashB').value.trim();
+    postJSON('/api/hash/compare', { first: a, second: b }, $('#hashCompareBtn')).then((d) => {
+      if (!d.success) { toast(d.error, 'error'); return; }
+      const box = $('#hashCompareResult');
+      box.classList.add('show');
+      box.innerHTML = d.match
+        ? `<div class="result-banner success">
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+             <div><strong>Integrity verified — hashes match</strong><br>The file/data is authentic and unmodified.</div></div>`
+        : `<div class="result-banner error">
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+             <div><strong>Integrity check failed — hashes differ</strong><br>The file/data has been modified or corrupted. Do not trust it.</div></div>`;
+    });
+  });
+})();
+</script>
+{% endblock %}

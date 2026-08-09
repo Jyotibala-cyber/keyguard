@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+{% block title %}AES Encryption{% endblock %}
+{% block page_title %}AES Encryption Module{% endblock %}
+{% block page_subtitle %}Authenticated AES-256-GCM encryption for text and files{% endblock %}
+
+{% block content %}
+
+<div class="card" data-tab-group="aes">
+  <div class="card-header">
+    <h2>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      AES-256 Encryption
+    </h2>
+    <span class="badge info"><span class="status-dot cyan"></span> GCM Mode · Authenticated</span>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="text">Encrypt / Decrypt Text</button>
+    <button class="tab" data-tab="file">Encrypt / Decrypt Files</button>
+  </div>
+
+  <!-- Text panel -->
+  <div class="tab-panel active" data-panel="text">
+    <div class="grid-2">
+      <div class="field">
+        <label>AES Key <span class="req">*</span></label>
+        <div class="copy-row">
+          <input class="input mono" id="aesKeyText" placeholder="Paste base64 AES key or generate one" autocomplete="off">
+          <button class="copy-btn" id="copyAesKey" type="button">Copy</button>
+        </div>
+        <div class="hint">AES-256 key (44-char base64). Never share it — it can decrypt everything protected with it.</div>
+      </div>
+      <div class="field shrink" style="align-self:flex-end;">
+        <button class="btn btn-primary" id="genAesKey" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          Generate Key
+        </button>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="field">
+        <label>Input Text</label>
+        <textarea class="textarea" id="aesInput" placeholder="Enter the plaintext to encrypt or the ciphertext to decrypt…"></textarea>
+      </div>
+      <div class="field">
+        <label>Output</label>
+        <textarea class="textarea" id="aesOutput" readonly placeholder="Result appears here…"></textarea>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <button class="btn btn-primary btn-block" id="aesEncryptBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Encrypt
+      </button>
+      <button class="btn btn-secondary btn-block" id="aesDecryptBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+        Decrypt
+      </button>
+    </div>
+
+    <div class="result-panel" id="aesTextResult"></div>
+  </div>
+
+  <!-- File panel -->
+  <div class="tab-panel" data-panel="file">
+    <div class="grid-2">
+      <div class="field">
+        <label>AES Key <span class="req">*</span></label>
+        <div class="copy-row">
+          <input class="input mono" id="aesKeyFile" placeholder="Paste base64 AES key or generate one" autocomplete="off">
+          <button class="copy-btn" type="button" id="copyAesKey2">Copy</button>
+        </div>
+      </div>
+      <div class="field shrink" style="align-self:flex-end;">
+        <button class="btn btn-primary" id="genAesKey2" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          Generate Key
+        </button>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="field">
+        <label>Select File <span class="req">*</span></label>
+        <div class="dropzone" id="aesDz">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
+          <p>Drop a file here or click to browse</p>
+          <span>Files are processed server-side with AES-256-GCM</span>
+          <div class="file-meta"></div>
+        </div>
+        <input type="file" id="aesFile" class="visually-hidden" hidden>
+      </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <div class="stack">
+          <button class="btn btn-primary btn-block" id="aesEncFileBtn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Encrypt File → .enc
+          </button>
+          <button class="btn btn-secondary btn-block" id="aesDecFileBtn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+            Decrypt File → original
+          </button>
+        </div>
+        <div class="hint">Encrypted files are self-contained (nonce + ciphertext + auth tag). Use the same key to decrypt. <strong style="color:var(--success)">Original uploads are deleted automatically right after processing.</strong></div>
+      </div>
+    </div>
+
+    <div class="result-panel" id="aesFileResult"></div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const keyInputs = ['#aesKeyText', '#aesKeyFile'];
+
+  function fillKey(key) {
+    keyInputs.forEach((sel) => { const el = $(sel); if (el) { el.value = key; } });
+    toast('New AES key generated', 'success');
+  }
+  $('#genAesKey').addEventListener('click', () => postJSON('/api/aes/generate-key', {}, $('#genAesKey')).then((d) => { if (d.success) fillKey(d.key); else toast(d.error, 'error'); }));
+  $('#genAesKey2').addEventListener('click', () => postJSON('/api/aes/generate-key', {}, $('#genAesKey2')).then((d) => { if (d.success) fillKey(d.key); else toast(d.error, 'error'); }));
+  $('#copyAesKey').addEventListener('click', () => $('#aesKeyText').value && copyText($('#aesKeyText').value, $('#copyAesKey')));
+  $('#copyAesKey2').addEventListener('click', () => $('#aesKeyFile').value && copyText($('#aesKeyFile').value, $('#copyAesKey2')));
+
+  const out = $('#aesOutput');
+  $('#aesEncryptBtn').addEventListener('click', () => {
+    const payload = { key: $('#aesKeyText').value.trim(), text: $('#aesInput').value };
+    postJSON('/api/aes/encrypt-text', payload, $('#aesEncryptBtn')).then((d) => {
+      if (d.success) { out.value = d.result; showResult('#aesTextResult', true, 'Encryption successful', `${payload.text.length} chars → ${d.result.length} bytes base64`); }
+      else showResult('#aesTextResult', false, 'Encryption failed', d.error);
+    });
+  });
+  $('#aesDecryptBtn').addEventListener('click', () => {
+    const payload = { key: $('#aesKeyText').value.trim(), text: $('#aesInput').value };
+    postJSON('/api/aes/decrypt-text', payload, $('#aesDecryptBtn')).then((d) => {
+      if (d.success) { out.value = d.result; showResult('#aesTextResult', true, 'Decryption successful', 'Authenticated plaintext recovered'); }
+      else showResult('#aesTextResult', false, 'Decryption failed', d.error);
+    });
+  });
+
+  bindDropzone($('#aesDz'), $('#aesFile'));
+  function runFileOp(url, btn) {
+    const key = $('#aesKeyFile').value.trim();
+    const file = $('#aesFile').files[0];
+    if (!key) return toast('AES key is required', 'error');
+    if (!file) return toast('Select a file first', 'error');
+    const fd = new FormData();
+    fd.append('key', key);
+    fd.append('file', file);
+    postJSON(url, fd, btn).then((d) => {
+      if (d.success) {
+        showResult('#aesFileResult', true, 'File processed', `${file.name} (${formatBytes(file.size)}) → ${d.filename} (${formatBytes(d.size)})`, () => window.location.href = d.download_url);
+      } else showResult('#aesFileResult', false, 'Operation failed', d.error);
+    });
+  }
+  $('#aesEncFileBtn').addEventListener('click', () => runFileOp('/api/aes/encrypt-file', $('#aesEncFileBtn')));
+  $('#aesDecFileBtn').addEventListener('click', () => runFileOp('/api/aes/decrypt-file', $('#aesDecFileBtn')));
+
+  function showResult(sel, ok, title, detail, onAction) {
+    const box = $(sel);
+    box.classList.add('show');
+    box.innerHTML = `
+      <div class="result-banner ${ok ? 'success' : 'error'}">
+        ${ok ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>'}
+        <div><strong>${esc(title)}</strong><br>${esc(detail)}</div>
+      </div>
+      ${onAction ? `<button class="btn btn-success" id="dlAction" type="button">Download Result File</button>` : ''}`;
+    if (onAction) $('#dlAction').addEventListener('click', onAction);
+  }
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+{% block title %}Key Management{% endblock %}
+{% block page_title %}Key Management System{% endblock %}
+{% block page_subtitle %}Generate, store, analyze and manage your cryptographic keys{% endblock %}
+
+{% block content %}
+
+<section class="stats-grid cols-6">
+  <div class="card stat-card cyan">
+    <div class="stat-icon cyan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    </div>
+    <div class="stat-meta"><span class="stat-label">AES Keys</span><span class="stat-value">{{ stats.aes_keys }}</span><span class="stat-sub">symmetric</span></div>
+  </div>
+  <div class="card stat-card green">
+    <div class="stat-icon green">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.6 7.6a5.5 5.5 0 1 1-7.8 7.8 5.5 5.5 0 0 1 7.8-7.8zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+    </div>
+    <div class="stat-meta"><span class="stat-label">RSA Keys</span><span class="stat-value">{{ stats.rsa_keys }}</span><span class="stat-sub">asymmetric</span></div>
+  </div>
+  <div class="card stat-card amber">
+    <div class="stat-icon amber">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+    </div>
+    <div class="stat-meta"><span class="stat-label">Total Keys</span><span class="stat-value">{{ stats.total_keys }}</span><span class="stat-sub">in vault</span></div>
+  </div>
+  <div class="card stat-card blue">
+    <div class="stat-icon blue">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+    </div>
+    <div class="stat-meta"><span class="stat-label">Key History</span><span class="stat-value">{{ stats.keys_generated }}</span><span class="stat-sub">generated</span></div>
+  </div>
+  <div class="card stat-card violet">
+    <div class="stat-icon violet">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+    </div>
+    <div class="stat-meta"><span class="stat-label">Strong Keys</span><span class="stat-value">100%</span><span class="stat-sub">≥2048-bit RSA / 256-bit AES</span></div>
+  </div>
+  <div class="card stat-card red">
+    <div class="stat-icon red">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+    </div>
+    <div class="stat-meta"><span class="stat-label">Weak Keys</span><span class="stat-value">0</span><span class="stat-sub">1024-bit flagged</span></div>
+  </div>
+</section>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        Generate New Key
+      </h2>
+    </div>
+    <div class="form-row">
+      <div class="field">
+        <label>Key Type</label>
+        <select class="select" id="keyType">
+          <option value="aes">AES (symmetric)</option>
+          <option value="rsa">RSA (asymmetric)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Key Size</label>
+        <select class="select" id="keyBits">
+          <option value="256" selected>AES-256</option>
+          <option value="128">AES-128</option>
+          <option value="2048" selected>RSA-2048</option>
+          <option value="4096">RSA-4096</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-block" id="genKeyBtn" type="button">Generate &amp; Store Key</button>
+    <div class="hint">AES keys are stored as base64 in the vault; RSA key pairs as PEM files under <span class="mono">keys/rsa/</span>.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+        Key Strength Analysis
+      </h2>
+    </div>
+    <div class="kv">
+      <span class="k">AES-256</span><span class="v">Extraordinarily strong · 2²⁵⁶ combinations</span>
+      <span class="k">AES-128</span><span class="v">Strong · 2¹²⁸ combinations</span>
+      <span class="k">RSA-4096</span><span class="v">High assurance · classified-grade</span>
+      <span class="k">RSA-2048</span><span class="v">Recommended minimum (NIST)</span>
+      <span class="k">RSA-1024</span><span class="v" style="color:var(--warning)">Legacy · considered broken since ~2015</span>
+    </div>
+    <div class="divider"></div>
+    <div class="field">
+      <label>Recommended cipher suite</label>
+      <div class="result-banner info">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <div>AES-256-GCM for symmetric data<br>RSA-2048/OAEP-SHA256 or better for key exchange</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="card" style="margin-top:20px;">
+  <div class="card-header">
+    <h2>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+      Key Vault
+    </h2>
+    <span class="badge info">key_store.json</span>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr><th>Key ID</th><th>Type</th><th>Algorithm</th><th>Size</th><th>Strength</th><th>Created</th><th style="text-align:right;">Actions</th></tr>
+      </thead>
+      <tbody id="vaultBody">
+        <tr><td colspan="7" class="muted">Loading key vault…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const bitsSel = $('#keyBits');
+  $('#keyType').addEventListener('change', (e) => {
+    const aes = e.target.value === 'aes';
+    bitsSel.innerHTML = aes
+      ? '<option value="256" selected>AES-256</option><option value="128">AES-128</option>'
+      : '<option value="2048" selected>RSA-2048</option><option value="4096">RSA-4096</option><option value="1024">RSA-1024</option>';
+  });
+
+  $('#genKeyBtn').addEventListener('click', () => {
+    const type = $('#keyType').value;
+    const bits = parseInt(bitsSel.value, 10);
+    const url = type === 'aes' ? '/api/aes/generate-key' : '/api/rsa/generate';
+    postJSON(url, { bits }, $('#genKeyBtn')).then((d) => {
+      if (d.success) {
+        if (type === 'aes') {
+          openModal('AES Key Generated', `
+            <p class="muted" style="margin-bottom:12px;">This key was added to the vault. Copy and store it somewhere safe — KeyGuard cannot recover it if lost.</p>
+            <div class="copy-row"><input class="input mono" readonly value="${esc(d.key)}"><button class="copy-btn" id="modalCopyKey">Copy</button></div>`);
+          $('#modalCopyKey').addEventListener('click', () => copyText(d.key, $('#modalCopyKey')));
+        } else {
+          openModal('RSA Key Pair Generated', `
+            <p class="muted" style="margin-bottom:12px;">Key ID <span class="mono">${esc(d.key_id)}</span> stored as PEM files. The private key is loaded into the RSA module.</p>
+            <div class="form-row">
+              <button class="btn btn-sm btn-secondary" id="modalCopyPub">Copy Public Key</button>
+              <button class="btn btn-sm btn-secondary" id="modalCopyPriv">Copy Private Key</button>
+            </div>`);
+          $('#modalCopyPub').addEventListener('click', () => copyText(d.public_pem, $('#modalCopyPub')));
+          $('#modalCopyPriv').addEventListener('click', () => copyText(d.private_pem, $('#modalCopyPriv')));
+        }
+        toast('Key generated and stored', 'success');
+        loadVault();
+      } else toast(d.error, 'error');
+    });
+  });
+
+  function loadVault() {
+    api('/api/keys').then((d) => {
+      if (!d.success) return;
+      const tb = $('#vaultBody');
+      tb.innerHTML = d.keys.length ? d.keys.map((k) => `
+        <tr>
+          <td class="mono">${esc(k.id)}</td>
+          <td><span class="badge ${k.type === 'aes' ? 'info' : 'neutral'}">${esc(k.type.toUpperCase())}</span></td>
+          <td>${esc(k.algorithm)}</td>
+          <td class="mono">${esc(k.key_size)}</td>
+          <td><span class="badge ${(k.type === 'rsa' && k.key_size < 2048) ? 'warning' : 'success'}">${esc(k.strength)}</span></td>
+          <td class="muted">${esc(k.created)}</td>
+          <td style="text-align:right;">
+            <button class="btn btn-sm btn-ghost" data-view="${esc(k.id)}">View</button>
+            <button class="btn btn-sm btn-danger" data-del="${esc(k.id)}">Delete</button>
+          </td>
+        </tr>`).join('') : '<tr><td colspan="7" class="muted">No keys stored yet — generate your first key.</td></tr>';
+
+      $$('#vaultBody [data-view]').forEach((b) => b.addEventListener('click', () => viewKey(b.dataset.view)));
+      $$('#vaultBody [data-del]').forEach((b) => b.addEventListener('click', () => {
+        const id = b.dataset.del;
+        if (!confirm('Delete key ' + id + '?')) return;
+        api('/api/keys/' + id, { method: 'DELETE' }).then((r) => {
+          if (r.success) { toast('Key deleted', 'success'); loadVault(); }
+          else toast(r.error, 'error');
+        });
+      }));
+    });
+  }
+
+  function viewKey(id) {
+    api('/api/keys/' + id).then((d) => {
+      if (!d.success) return toast(d.error, 'error');
+      const k = d.key;
+      if (k.type === 'aes') {
+        openModal('AES Key — ' + id, `
+          <div class="kv">
+            <span class="k">Key ID</span><span class="v">${esc(k.id)}</span>
+            <span class="k">Algorithm</span><span class="v">${esc(k.algorithm)}</span>
+            <span class="k">Size</span><span class="v">${esc(k.key_size)} bits</span>
+            <span class="k">Created</span><span class="v">${esc(k.created)}</span>
+          </div>
+          <div class="divider"></div>
+          <div class="copy-row"><input class="input mono" readonly value="${esc(k.key)}"><button class="copy-btn" id="viewCopy">Copy Key</button></div>`);
+        $('#viewCopy').addEventListener('click', () => copyText(k.key, $('#viewCopy')));
+      } else {
+        openModal('RSA Key — ' + id, `
+          <div class="kv">
+            <span class="k">Key ID</span><span class="v">${esc(k.id)}</span>
+            <span class="k">Algorithm</span><span class="v">${esc(k.algorithm)}</span>
+            <span class="k">Size</span><span class="v">${esc(k.key_size)} bits</span>
+            <span class="k">Created</span><span class="v">${esc(k.created)}</span>
+          </div>
+          <div class="divider"></div>
+          <label style="font-size:.78rem;font-weight:600;color:var(--text-secondary);">Public Key</label>
+          <textarea class="textarea" readonly rows="6" style="margin-top:6px;">${esc(d.public_pem)}</textarea>
+          <div style="margin-top:10px;"><button class="btn btn-sm btn-ghost copy-btn" id="viewCopyPub">Copy Public Key</button></div>`);
+        $('#viewCopyPub').addEventListener('click', () => copyText(d.public_pem, $('#viewCopyPub')));
+      }
+    });
+  }
+
+  loadVault();
+})();
+</script>
+{% endblock %}
