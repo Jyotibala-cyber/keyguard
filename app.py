@@ -10,6 +10,8 @@ import os
 import re
 import shutil
 import tempfile
+import threading
+import time
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -29,13 +31,22 @@ DATA_ROOT.mkdir(parents=True, exist_ok=True)
 
 VOLATILE = os.environ.get("KEYGUARD_VOLATILE", "").strip().lower() in ("1", "true", "yes", "on")
 
+# Hard cap on upload size, enforced at the Flask level. Configurable via
+# KEYGUARD_MAX_UPLOAD_MB (default 16 MB) to prevent OOM/DoS via huge files.
+MAX_UPLOAD_MB = int(os.environ.get("KEYGUARD_MAX_UPLOAD_MB", "16"))
+
+# Abandoned per-session workspaces older than this TTL are garbage-collected
+# automatically (hours). Defaults to 24h.
+SESSION_TTL_HOURS = int(os.environ.get("KEYGUARD_SESSION_TTL_HOURS", "24"))
+SESSION_CLEANUP_INTERVAL = int(os.environ.get("KEYGUARD_CLEANUP_INTERVAL", "3600"))
+
 _MEM = {}
 _TEMP_DIRS = {}
 
 DEFAULT_SETTINGS = {
     "auto_save_aes_keys": True,
     "auto_delete_uploads": True,
-    "max_file_size_mb": 50,
+    "max_file_size_mb": MAX_UPLOAD_MB,
     "report_include_logs": True,
     "security_level": "High",
 }
@@ -59,7 +70,8 @@ def _load_or_create_secret():
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("KEYGUARD_SECRET") or _load_or_create_secret()
-app.config["MAX_CONTENT_LENGTH"] = 60 * 1024 * 1024
+# Hard cap enforced at the Flask level (see MAX_UPLOAD_MB above).
+app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
 app.config["JSON_SORT_KEYS"] = False
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
@@ -93,6 +105,7 @@ def workspace():
         root = Path(tmp.name)
     else:
         root = DATA_ROOT / sid
+        _touch_session(sid)
     uploads = root / "uploads"
     keys = root / "keys"
     aes = keys / "aes"
@@ -115,6 +128,59 @@ def workspace():
 
 def _mem():
     return _MEM.setdefault(get_session_id(), {"logs": [], "keys": {"keys": []}, "settings": None})
+
+
+def _touch_session(sid):
+    """Update the folder mtime so an active session is never garbage-collected."""
+    if VOLATILE:
+        return
+    try:
+        os.utime(DATA_ROOT / sid, None)
+    except OSError:
+        pass
+
+
+def cleanup_stale_sessions():
+    """Delete per-session workspaces idle for more than SESSION_TTL_HOURS.
+
+    Prevents abandoned sessions from filling up disk in persistent mode.
+    Skips the current session and everything in VOLATILE mode."""
+    if VOLATILE:
+        return
+    cutoff = time.time() - SESSION_TTL_HOURS * 3600
+    current = get_session_id()
+    try:
+        for folder in DATA_ROOT.iterdir():
+            if not folder.is_dir():
+                continue
+            if folder.name == current:
+                continue
+            try:
+                if folder.stat().st_mtime < cutoff:
+                    shutil.rmtree(folder, ignore_errors=True)
+            except OSError:
+                continue
+    except OSError:
+        pass
+
+
+def _session_cleanup_loop():
+    """Background thread that periodically sweeps stale sessions."""
+    while True:
+        time.sleep(SESSION_CLEANUP_INTERVAL)
+        try:
+            cleanup_stale_sessions()
+        except Exception:
+            pass
+
+
+def start_session_cleanup():
+    """Run an initial sweep and launch the background collector (no-op in VOLATILE)."""
+    if VOLATILE:
+        return
+    cleanup_stale_sessions()
+    t = threading.Thread(target=_session_cleanup_loop, daemon=True)
+    t.start()
 
 
 # --------------------------------------------------------------------------- #
@@ -265,12 +331,22 @@ def compute_stats():
 
 
 def save_upload(file_storage):
-    """Persist an uploaded file with a random name into this session's dir."""
+    """Persist an uploaded file with a random name into this session's dir.
+
+    Enforces the per-session max upload size (settings) on top of Flask's
+    MAX_CONTENT_LENGTH hard cap, so a huge file can't be written to disk."""
+    limit_mb = load_settings().get("max_file_size_mb", MAX_UPLOAD_MB)
+    limit_bytes = limit_mb * 1024 * 1024
+    if request.content_length and request.content_length > limit_bytes:
+        raise ValueError("File exceeds the {} MB upload limit".format(limit_mb))
     ws = workspace()
     ext = Path(file_storage.filename or "file").suffix or ".bin"
     name = "up_{}{}".format(uuid.uuid4().hex, ext)
     path = ws["uploads"] / name
     file_storage.save(path)
+    if path.stat().st_size > limit_bytes:
+        path.unlink(missing_ok=True)
+        raise ValueError("File exceeds the {} MB upload limit".format(limit_mb))
     return path
 
 
@@ -471,6 +547,10 @@ def api_rsa_generate():
     try:
         data = body()
         bits = int(data.get("bits", 2048))
+        if bits < 2048:
+            log_activity("Key Management", "Generate", "failed",
+                         "RSA-{} rejected: <2048 bits is cryptographically weak".format(bits))
+            return err("RSA-{} is no longer secure. Minimum is 2048 bits (4096 recommended).".format(bits), 400)
         priv_pem, pub_pem = rsa.generate_keypair(bits)
         key_id = "rsa_" + uuid.uuid4().hex[:10]
         key_dir = workspace()["rsa"] / key_id
@@ -592,6 +672,8 @@ def api_hash_file():
                 src.unlink(missing_ok=True)
         log_activity("Hashing", "Hash file", "success", "{} ({})".format(fh.filename, size))
         return jsonify({"success": True, "filename": fh.filename, "hashes": result})
+    except ValueError as exc:
+        return err(exc)
     except OSError as exc:
         return err("File processing error: {}".format(exc))
 
@@ -914,5 +996,6 @@ def server_error(_e):
 if __name__ == "__main__":
     # Railway (and most PaaS) provide the port via the PORT environment variable.
     # Bind 0.0.0.0 so the app is reachable outside the container.
+    start_session_cleanup()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)

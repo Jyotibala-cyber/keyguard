@@ -22,6 +22,9 @@ settings.json
 .dist/
 *.log
 
+# Local notes (not for the public repo)
+PROJECT_EXPLANATION_HINGLISH.txt
+
 # IDE / OS
 .vscode/
 .idea/

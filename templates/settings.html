@@ -31,7 +31,8 @@
     <div class="form-row" style="margin-top:16px;">
       <div class="field">
         <label>Max upload size (MB)</label>
-        <input class="input mono" id="maxFileMb" type="number" min="1" max="500">
+        <input class="input mono" id="maxFileMb" type="number" min="1" max="16">
+        <div class="hint">Hard server cap enforced by Flask is 16 MB (KEYGUARD_MAX_UPLOAD_MB).</div>
       </div>
       <div class="field">
         <label>Security level</label>
@@ -131,7 +132,7 @@
       auto_save_aes_keys: $('#autoSaveAes').checked,
       auto_delete_uploads: $('#autoDelUploads').checked,
       report_include_logs: $('#includeLogs').checked,
-      max_file_size_mb: parseInt($('#maxFileMb').value, 10) || 50,
+      max_file_size_mb: parseInt($('#maxFileMb').value, 10) || 16,
       security_level: $('#secLevel').value,
     }, $('#saveSettingsBtn')).then((d) => {
       if (!d.success) return toast(d.error, 'error');

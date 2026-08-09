@@ -91,6 +91,9 @@ KEYGUARD_VOLATILE=1 python app.py   # volatile mode — zero data stored, wiped 
 | `KEYGUARD_SECRET` | auto-generated `.secret_key` | Secret used to sign session cookies. Set a fixed value so sessions survive across restarts/deployments. |
 | `KEYGUARD_VOLATILE` | off | Set to `1`/`true` to run in **zero-storage** mode — all data lives in memory & OS temp files, wiped on restart. |
 | `KEYGUARD_COOKIE_SECURE` | off | Set to `1`/`true` to send session cookies with the `Secure` flag (required behind HTTPS). |
+| `KEYGUARD_MAX_UPLOAD_MB` | `16` | Hard cap on upload size enforced at the Flask level (prevents OOM / DoS via huge files). |
+| `KEYGUARD_SESSION_TTL_HOURS` | `24` | Stale per-session workspaces older than this are garbage-collected automatically. |
+| `KEYGUARD_CLEANUP_INTERVAL` | `3600` | Seconds between background session-cleanup sweeps. |
 | `PORT` | `5000` | Port the web server binds to (Railway sets this automatically). |
 
 ## Deploying to Railway
@@ -110,6 +113,20 @@ KEYGUARD_VOLATILE=1 python app.py   # volatile mode — zero data stored, wiped 
 > No secrets are ever committed: the auto-generated `.secret_key` is git-ignored, and all
 > per-session keys/logs/uploads/reports live only under `data/<session_id>/` which is also
 > git-ignored.
+
+## Production Hardening
+
+- **Upload DoS protection** — Flask enforces `MAX_CONTENT_LENGTH` (default 16 MB, tune via
+  `KEYGUARD_MAX_UPLOAD_MB`) and `save_upload` re-checks the per-session size limit before
+  anything is written to disk.
+- **Session garbage collection** — in persistent mode, workspaces idle longer than
+  `KEYGUARD_SESSION_TTL_HOURS` (default 24 h) are deleted by a background sweeper
+  (`KEYGUARD_CLEANUP_INTERVAL` seconds), so abandoned sessions can't fill the disk. Active
+  sessions are touched on every request and never removed.
+- **RSA 1024-bit is blocked** — the backend rejects any RSA key `< 2048` bits and the crypto
+  layer only allows 2048/4096. Weak keys can't be generated even via a crafted request.
+- **Gunicorn sizing** — the `Procfile` uses `--workers=2 --threads=4 --timeout 120` so
+  CPU-heavy hashing/PBKDF2 operations and concurrent users don't stall the worker pool.
 
 ## Security Notes
 

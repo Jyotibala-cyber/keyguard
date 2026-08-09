@@ -40,7 +40,7 @@
     <div class="stat-icon red">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
     </div>
-    <div class="stat-meta"><span class="stat-label">Weak Keys</span><span class="stat-value">0</span><span class="stat-sub">1024-bit flagged</span></div>
+    <div class="stat-meta"><span class="stat-label">Weak Keys</span><span class="stat-value">0</span><span class="stat-sub">&lt;2048-bit blocked</span></div>
   </div>
 </section>
 
@@ -86,7 +86,6 @@
       <span class="k">AES-128</span><span class="v">Strong · 2¹²⁸ combinations</span>
       <span class="k">RSA-4096</span><span class="v">High assurance · classified-grade</span>
       <span class="k">RSA-2048</span><span class="v">Recommended minimum (NIST)</span>
-      <span class="k">RSA-1024</span><span class="v" style="color:var(--warning)">Legacy · considered broken since ~2015</span>
     </div>
     <div class="divider"></div>
     <div class="field">
@@ -129,7 +128,7 @@
     const aes = e.target.value === 'aes';
     bitsSel.innerHTML = aes
       ? '<option value="256" selected>AES-256</option><option value="128">AES-128</option>'
-      : '<option value="2048" selected>RSA-2048</option><option value="4096">RSA-4096</option><option value="1024">RSA-1024</option>';
+      : '<option value="2048" selected>RSA-2048</option><option value="4096">RSA-4096</option>';
   });
 
   $('#genKeyBtn').addEventListener('click', () => {

@@ -9,16 +9,16 @@ import base64
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
-RSA_KEY_SIZES = (1024, 2048, 4096)
+RSA_KEY_SIZES = (2048, 4096)
 # Maximum plaintext bytes for RSA-OAEP with SHA-256 for a given modulus size.
-MAX_PLAINTEXT = {1024: 62, 2048: 190, 4096: 446}
+MAX_PLAINTEXT = {2048: 190, 4096: 446}
 DEFAULT_KEY_SIZE = 2048
 
 
 def generate_keypair(bits=DEFAULT_KEY_SIZE):
     """Generate an RSA key pair and return (private_pem, public_pem)."""
     if bits not in RSA_KEY_SIZES:
-        raise ValueError("RSA key size must be 1024, 2048 or 4096 bits")
+        raise ValueError("RSA key size must be 2048 or 4096 bits (1024-bit is no longer secure)")
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=bits)
     public_key = private_key.public_key()
 
