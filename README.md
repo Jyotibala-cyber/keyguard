@@ -5,7 +5,9 @@ cryptographic toolkit behind a professional, SOC-inspired dashboard. It performs
 encryption, decryption, hashing, key management, password security and reporting — no
 placeholder buttons, no dummy features.
 
-![Tech](https://img.shields.io/badge/Flask-3-blueviolet) ![Crypto](https://img.shields.io/badge/PyCryptodome-3.19-informational) ![RSA](https://img.shields.io/badge/cryptography-48-orange) ![Status](https://img.shields.io/badge/status-production-ready-success)
+![Tech](https://img.shields.io/badge/Flask-3-blueviolet) ![Crypto](https://img.shields.io/badge/PyCryptodome-3.19-informational) ![RSA](https://img.shields.io/badge/cryptography-48-orange) ![Status](https://img.shields.io/badge/status-production-ready-success) ![Deploy](https://img.shields.io/badge/deployed-Render-brightgreen)
+
+> **Live demo:** [https://keyguard-x5nh.onrender.com/](https://keyguard-x5nh.onrender.com/)
 
 ---
 
@@ -95,54 +97,6 @@ KEYGUARD_VOLATILE=1 python app.py   # volatile mode — zero data stored, wiped 
 | `KEYGUARD_SESSION_TTL_HOURS` | `24` | Stale per-session workspaces older than this are garbage-collected automatically. |
 | `KEYGUARD_CLEANUP_INTERVAL` | `3600` | Seconds between background session-cleanup sweeps. |
 | `PORT` | `5000` | Port the web server binds to (Render/Railway sets this automatically). |
-
-## Deploying to Render
-
-Render supports a `render.yaml` **Blueprint** (included in this repo), so you can deploy
-the whole app with one click.
-
-**Option A — Blueprint (one-click):**
-1. **Push this repo to GitHub** — make sure `.secret_key`, `data/`, `keys/`, `uploads/`
-   and `reports/` stay out of git (already handled by `.gitignore`).
-2. On [render.com](https://render.com) → **New** → **Blueprint** → connect the GitHub repo.
-3. Render reads `render.yaml`, builds the app, creates the env vars and deploys
-   automatically. It also provisions a `KEYGUARD_SECRET` automatically.
-
-**Option B — Manual Web Service:**
-1. **New** → **Web Service** → connect the GitHub repo.
-2. Runtime **Python 3**, Build Command:
-   ```
-   pip install -r requirements.txt
-   ```
-3. Start Command:
-   ```
-   gunicorn --workers=2 --threads=4 --timeout 120 --bind 0.0.0.0:$PORT app:app
-   ```
-4. Add the env vars (see table above). Recommended for Render:
-   - `KEYGUARD_SECRET` → a long random string (e.g. `python -c "import secrets; print(secrets.token_hex(32))"`)
-   - `KEYGUARD_COOKIE_SECURE` → `1`
-   - `KEYGUARD_VOLATILE` → `1` *(recommended: Render's disk is ephemeral — zero-storage
-     mode guarantees nothing sensitive persists and a redeploy starts clean)*
-   - `KEYGUARD_MAX_UPLOAD_MB` → `16`
-5. Deploy and open the generated `*.onrender.com` URL. Render terminates TLS automatically.
-
-> No secrets are ever committed: the auto-generated `.secret_key` is git-ignored, and all
-> per-session keys/logs/uploads/reports live only under `data/<session_id>/` which is also
-> git-ignored.
-
-## Production Hardening
-
-- **Upload DoS protection** — Flask enforces `MAX_CONTENT_LENGTH` (default 16 MB, tune via
-  `KEYGUARD_MAX_UPLOAD_MB`) and `save_upload` re-checks the per-session size limit before
-  anything is written to disk.
-- **Session garbage collection** — in persistent mode, workspaces idle longer than
-  `KEYGUARD_SESSION_TTL_HOURS` (default 24 h) are deleted by a background sweeper
-  (`KEYGUARD_CLEANUP_INTERVAL` seconds), so abandoned sessions can't fill the disk. Active
-  sessions are touched on every request and never removed.
-- **RSA 1024-bit is blocked** — the backend rejects any RSA key `< 2048` bits and the crypto
-  layer only allows 2048/4096. Weak keys can't be generated even via a crafted request.
-- **Gunicorn sizing** — the `Procfile` uses `--workers=2 --threads=4 --timeout 120` so
-  CPU-heavy hashing/PBKDF2 operations and concurrent users don't stall the worker pool.
 
 ## Security Notes
 
